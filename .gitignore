@@ -1,0 +1,16 @@
+# ---- Dataset: DILARANG diunggah ulang ke repo publik (aturan kompetisi)
+train/
+my_train/
+my_val/
+data/
+*.zip
+
+# ---- Hasil eksperimen (bobot besar). Model terpilih DISALIN ke submission/
+runs/
+
+# ---- Python / notebook
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+venv/

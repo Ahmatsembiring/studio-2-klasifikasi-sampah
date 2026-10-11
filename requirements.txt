@@ -1,0 +1,6 @@
+torch
+torchvision
+timm>=1.0
+pillow
+numpy
+pandas
