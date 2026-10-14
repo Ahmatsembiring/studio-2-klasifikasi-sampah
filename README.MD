@@ -7,7 +7,7 @@ Deep Learning (IF25-40401) · Teknik Informatika ITERA · Semester Ganjil 2026/2
 | No | Nama Lengkap           | NIM       | Kontribusi utama |
 |----|------------------------|-----------|------------------|
 | 1  | Ahmat Prayoga Sembiring| 123140053 |                  |
-| 2  |                        |           |                  |
+| 2  | Tengku Hafid Diraputra  | 123140043 |                  |
 
 ## Ringkasan Pendekatan
 
