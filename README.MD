@@ -27,7 +27,7 @@ Deep Learning (IF25-40401) · Teknik Informatika ITERA · Semester Ganjil 2026/2
 | Putaran | Commit | Macro-F1 (split validasi lokal) | Macro-F1 (diumumkan asisten) |
 |---------|--------|----------------------------------|------------------------------|
 | Preview 1 (14 Okt) | `f88e1ad` | 0,9722 | 0,9595 (akurasi 0,9609) |
-| Preview 2 (21 Okt) | `<isi hash setelah push>` | 0,9722 (cnxt224 + TTA, model A) | |
+| Preview 2 (21 Okt) | `4daca6c` | 0,9722 (cnxt224 + TTA, model A) | |
 | Final (25 Okt)     | | | |
 
 Validasi lokal terbukti **optimis**: 0,9722 di lokal vs 0,9595 di validation set tersembunyi (selisih 0,013). Penyebabnya, checkpoint Preview 1 dipilih dari nilai *maksimum* kurva yang berisik, dan `my_val` kecil (410 gambar). Karena itu, mulai Preview 2 pemilihan memakai rata-rata 3 epoch terakhir.
