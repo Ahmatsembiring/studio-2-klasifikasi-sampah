@@ -11,6 +11,7 @@ Setiap run menghasilkan runs/<name>/:
     args.json            semua argumen run (reproduksibilitas)
 
 Mode --full: latih di my_train + my_val dengan jumlah epoch tetap (untuk model Final).
+--tta-hflip: config.json submission menyalakan TTA flip horizontal (lihat submission/model.py).
 
 Perbedaan utama dari train_baseline.py:
   1. Checkpoint dipilih berdasarkan Macro-F1 (metrik penilaian), bukan akurasi.
@@ -27,6 +28,7 @@ import math
 import random
 import shutil
 import time
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -40,6 +42,9 @@ from torchvision import datasets, transforms
 
 import evaluate                       # metrik + jalur load yang SAMA dengan penilai
 from submission import model as sub   # build_model / build_eval_transform
+
+# GradScaler melewati optimizer.step() di batch pertama (cek overflow) -> peringatan scheduler tidak relevan.
+warnings.filterwarnings("ignore", message=r".*lr_scheduler\.step\(\).*")
 
 CLASSES = evaluate.CLASSES
 FP16_EXPORT_MB = 95
@@ -166,6 +171,8 @@ def main():
     ap.add_argument("--name", default=None, help="nama folder di runs/")
     ap.add_argument("--full", action="store_true", help="latih di my_train + my_val (model Final)")
     ap.add_argument("--no-pretrained", action="store_true", help="tanpa bobot ImageNet (uji/scratch)")
+    ap.add_argument("--tta-hflip", action="store_true",
+                    help="aktifkan TTA flip horizontal di config.json submission (berlaku saat evaluasi)")
     a = ap.parse_args()
 
     seed_everything(a.seed)
@@ -179,6 +186,7 @@ def main():
     model = sub.build_model(a.backbone, pretrained=not a.no_pretrained)
     cfg = model_config(model, a.img_size)
     cfg["backbone"] = a.backbone
+    cfg["tta_hflip"] = a.tta_hflip
     model.to(device)
     print(f"device={device}  backbone={a.backbone}  input={cfg['img_size']}  mean={cfg['mean']}")
 
@@ -273,6 +281,7 @@ def main():
         "macro_f1_train_loop": round(best_f1, 4), "macro_f1_evaluate": round(check["macro_f1"], 4),
         "accuracy_evaluate": round(check["accuracy"], 4), "per_class_f1": check["per_class_f1"],
         "confusion_matrix": check["confusion_matrix"], "model_mb": round(size_mb, 1),
+        "img_size": cfg["img_size"], "tta_hflip": a.tta_hflip, "n_train": len(tr_ds),
     }, indent=2))
     print("\n" + "=" * 70)
     print(f"run              : {run}")
