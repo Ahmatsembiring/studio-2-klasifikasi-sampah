@@ -13,5 +13,6 @@
     0.225
   ],
   "timm_version": "1.0.30",
-  "torch_version": "2.11.0+cu130"
+  "torch_version": "2.11.0+cu130",
+  "tta_hflip": true
 }

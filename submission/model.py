@@ -7,7 +7,7 @@ dan model.pth tidak mungkin saling tidak cocok tanpa ketahuan.
 
 Isi folder submission/ yang wajib di-commit:
     model.py      (file ini — tidak perlu diubah)
-    config.json   (backbone, ukuran input, mean/std)
+    config.json   (backbone, ukuran input, mean/std, tta_hflip)
     model.pth     (state_dict)
 
 Kontrak evaluate.py:
@@ -19,6 +19,7 @@ import json
 from pathlib import Path
 
 import timm
+import torch
 from torchvision import transforms
 
 NUM_CLASSES = 5
@@ -47,9 +48,29 @@ def build_eval_transform(img_size, crop_pct, mean, std):
     ])
 
 
+def add_hflip_tta(model):
+    """Test-time augmentation: rata-rata logits gambar asli dan cerminan horizontalnya.
+
+    Hanya `forward` yang dibungkus — tidak ada layer baru, jadi nama key state_dict
+    tetap sama dan load_state_dict(strict=True) di evaluate.py tetap lolos.
+    Masuk akal karena model dilatih dengan RandomHorizontalFlip: kedua versi gambar
+    sama-sama "normal" bagi model, dan merata-ratakannya mengurangi variansi prediksi.
+    """
+    base_forward = model.forward
+
+    def forward(x):
+        return (base_forward(x) + base_forward(torch.flip(x, dims=[3]))) / 2
+
+    model.forward = forward
+    return model
+
+
 def get_model():
     cfg = load_config()
-    return build_model(cfg["backbone"], pretrained=False)
+    model = build_model(cfg["backbone"], pretrained=False)
+    if cfg.get("tta_hflip", False):   # config lama tanpa kunci ini -> tanpa TTA
+        model = add_hflip_tta(model)
+    return model
 
 
 def get_transform():
