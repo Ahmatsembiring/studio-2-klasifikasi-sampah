@@ -7,7 +7,7 @@ Deep Learning (IF25-40401) · Teknik Informatika ITERA · Semester Ganjil 2026/2
 | No | Nama Lengkap | NIM | Kontribusi utama |
 |----|--------------|-----|------------------|
 | 1  | Ahmat Prayoga Sembiring | 123140053 | Setup repo & alur Git; menjalankan training/eksperimen di Google Colab (resolusi 224 vs 288, TTA); verifikasi kelengkapan data; pengemasan & pengujian submission; penulisan README |
-| 2  | Tengku Hafid Diraputra | 123140043 |  |
+| 2  | Tengku Hafid Diraputra | 123140043 | Perancangan pipeline pelatihan & pemilihan hiperparameter (`train.py`); implementasi modul inferensi, TTA flip, & ekspor `fp16` (`submission/model.py`); evaluasi metrik F1 per kelas, *confusion matrix*, & analisis kesalahan (*error analysis*); reproduksi & verifikasi akhir submission |
 
 ## Model Final
 
@@ -48,6 +48,44 @@ Catatan eksperimen:
 | E3 | cnxt288: resolusi 288 px, data & split sama | 0,9735 (epoch 11); rata-3-akhir 0,9704 | Hipotesis **tidak terbukti**: selisih dengan E2 hanya ±1 gambar per kelas |
 | E4 | TTA flip pada cnxt224 | 0,9722 → 0,9722 | Tidak mengubah satu pun prediksi di `my_val`. Dipakai karena tidak merugikan |
 | P2 | cnxt224 dilatih ulang pada 2.753 gambar, 15 epoch, TTA flip | — (tanpa validasi) | Preview 2 → **model Final** |
+
+### Distribusi Dataset & Split Validasi Lokal
+
+Pencocokan isi folder `train/` terhadap `train_sources.csv` serta pembagian split lokal menggunakan `make_local_split('data/train', '.', 0.15, 42)` (fraksi 15% per kelas, `seed=42`):
+
+| Kelas | Manifest (`train_sources.csv`) | Tersedia | Hilang | `my_train` (85%) | `my_val` (15%) |
+|-------|-------------------------------:|---------:|-------:|-----------------:|---------------:|
+| `botol_plastik` | 541 | 523 | 18 | 445 | 78 |
+| `gelas_plastik` | 572 | 521 | 51 | 443 | 78 |
+| `kertas_kardus` | 395 | 365 | 30 | 311 | 54 |
+| `saset_kemasan` | 758 | 673 | 85 | 573 | 100 |
+| `styrofoam` | 698 | 671 | 27 | 571 | 100 |
+| **TOTAL** | **2.964** | **2.753** | **211** | **2.343** | **410** |
+
+### Evaluasi Per Kelas & Confusion Matrix pada `my_val`
+
+Hasil evaluasi `evaluate.py` untuk model validasi ConvNeXt-Tiny 224 px (dilatih pada 2.343 gambar `my_train`, diuji pada 410 gambar `my_val`):
+
+| Kelas | Precision | Recall | F1-Score | Jumlah Sampel (`my_val`) |
+|-------|----------:|-------:|---------:|-------------------------:|
+| `botol_plastik` | 0,9512 | 1,0000 | **0,9750** | 78 |
+| `gelas_plastik` | 0,9868 | 0,9615 | **0,9740** | 78 |
+| `kertas_kardus` | 1,0000 | 0,9259 | **0,9615** | 54 |
+| `saset_kemasan` | 0,9703 | 0,9800 | **0,9751** | 100 |
+| `styrofoam` | 0,9703 | 0,9800 | **0,9751** | 100 |
+| **Macro-F1 / Akurasi** | — | — | **0,9722** (Akurasi: **0,9732**) | **410** (399 benar, 11 salah) |
+
+**Confusion Matrix** (baris = label asli, kolom = prediksi):
+
+| Label Asli \ Prediksi | `botol_plastik` | `gelas_plastik` | `kertas_kardus` | `saset_kemasan` | `styrofoam` |
+|-----------------------|----------------:|----------------:|----------------:|----------------:|------------:|
+| **`botol_plastik`** | **78** | 0 | 0 | 0 | 0 |
+| **`gelas_plastik`** | 1 | **75** | 0 | 0 | 2 |
+| **`kertas_kardus`** | 0 | 1 | **50** | 2 | 1 |
+| **`saset_kemasan`** | 2 | 0 | 0 | **98** | 0 |
+| **`styrofoam`** | 1 | 0 | 0 | 1 | **98** |
+
+Dari 11 kesalahan pada `my_val`, kelas `kertas_kardus` memiliki *recall* terendah (50/54 benar; 4 sampel terprediksi sebagai `saset_kemasan`, `gelas_plastik`, dan `styrofoam`), diikuti `gelas_plastik` yang 2 sampelnya tertukar dengan `styrofoam` dan 1 sampel dengan `botol_plastik`.
 
 ## Pelajaran
 
