@@ -6,8 +6,14 @@ Deep Learning (IF25-40401) · Teknik Informatika ITERA · Semester Ganjil 2026/2
 
 | No | Nama Lengkap | NIM | Kontribusi utama |
 |----|--------------|-----|------------------|
-| 1  | Ahmat Prayoga Sembiring | 123140053 |  |
-| 2  | Tengku Hafid Diraputra | 123140043 |  |
+| 1  | Ahmat Prayoga Sembiring | 123140053 | <ISI: kontribusi nyata, mis. training & eksperimen di Colab, analisis error> |
+| 2  | Tengku Hafid Diraputra | 123140043 | <ISI: kontribusi nyata> |
+
+## Model Final
+
+Model yang dikirim untuk Final adalah **model Preview 2**: ConvNeXt-Tiny 224 px dengan TTA flip horizontal, dilatih pada seluruh data yang tersedia (2.753 gambar). Isi `submission/` berasal dari commit `4daca6c`.
+
+Model ini dipilih karena skor Preview 2 (**0,9675**) lebih tinggi dari Preview 1 (0,9595) pada validation set tersembunyi. Setelah Preview 2, kelompok **tidak mengirim model baru**. Model yang belum pernah dievaluasi pada validation set tersembunyi tidak dipakai untuk Final, karena skor validasi lokal terbukti optimis (lihat bagian Pelajaran).
 
 ## Ringkasan Pendekatan
 
@@ -16,40 +22,46 @@ Deep Learning (IF25-40401) · Teknik Informatika ITERA · Semester Ganjil 2026/2
   - AdamW, LR backbone 0.0001, LR head 10×, weight decay 0,05; warmup linear 1 epoch lalu cosine decay per-step; 15 epoch; batch 32; mixed precision (AMP)
   - Cross-entropy dengan *label smoothing* 0,1 (membantu menghadapi label noise)
   - Augmentasi: RandomResizedCrop(224, skala 0,4–1,0), flip horizontal, TrivialAugmentWide, RandomErasing(p=0,25)
-- **Seleksi model**: eksperimen dibandingkan pada split validasi lokal yang sama (15% per kelas, seed 42) dengan Macro-F1 dari fungsi `metrics()` di `evaluate.py` resmi. Pemilihan memakai **rata-rata Macro-F1 3 epoch terakhir**, bukan nilai maksimum, untuk menghindari bias seleksi pada validasi yang kecil. Model submission lalu dilatih ulang pada seluruh data yang tersedia (my_train + my_val = 2.753 gambar) dengan konfigurasi dan jadwal yang sama.
-- **Data tambahan**: tidak ada. Hanya train set resmi, tetapi **baru 2.753 dari 2.964 gambar**: 211 gambar hilang dari salinan dataset kelompok. Kekurangan ini terdeteksi dengan mencocokkan isi folder ke `train_sources.csv`. Pelatihan ulang dengan data lengkap direncanakan.
+- **Seleksi model**: eksperimen dibandingkan pada split validasi lokal yang sama (15% per kelas, seed 42) dengan Macro-F1 dari fungsi `metrics()` di `evaluate.py` resmi. Pemilihan memakai **rata-rata Macro-F1 3 epoch terakhir**, bukan nilai maksimum. Model submission lalu dilatih ulang pada seluruh data yang tersedia (my_train + my_val = 2.753 gambar) dengan konfigurasi dan jadwal yang sama.
+- **Data tambahan**: tidak ada. Hanya train set resmi, tetapi **baru 2.753 dari 2.964 gambar**: 211 gambar hilang dari salinan dataset kelompok. Kekurangan ini terdeteksi dengan mencocokkan isi folder ke `train_sources.csv`.
 - **Ukuran input & preprocessing**: resize sisi pendek 256 → center crop 224 → normalisasi mean/std ImageNet. Disimpan di `submission/config.json` dan dibaca oleh `get_transform()`.
-- **Test-time augmentation**: **aktif**. Prediksi = rata-rata logits gambar asli dan cerminan horizontalnya (`tta_hflip` di `config.json`). Di `my_val`: 0,9722 tanpa TTA → 0,9722 dengan TTA (tidak mengubah prediksi; tetap dipakai karena tidak merugikan). Estimasi evaluasi 740 gambar di CPU 2 core: ±3,6 menit.
+- **Test-time augmentation**: **aktif**. Prediksi = rata-rata logits gambar asli dan cerminan horizontalnya (`tta_hflip` di `config.json`). Estimasi evaluasi 740 gambar di CPU 2 core: ±3 menit.
 - **Bobot**: fp16 (55,7 MB) agar di bawah batas 100 MB GitHub; argmax identik dengan fp32 (diuji).
 
 ## Hasil
 
 | Putaran | Commit | Macro-F1 (split validasi lokal) | Macro-F1 (diumumkan asisten) |
 |---------|--------|----------------------------------|------------------------------|
-| Preview 1 (14 Okt) | `f88e1ad` | 0,9722 | 0,9595 (akurasi 0,9609) |
-| Preview 2 (21 Okt) | `4daca6c` | 0,9722 (cnxt224 + TTA, model A) | |
-| Final (25 Okt)     | | | |
+| Preview 1 (14 Okt) | `0d4bd7a` | 0,9722 | 0,9595 (akurasi 0,9609) |
+| Preview 2 (21 Okt) | `4daca6c` | 0,9722 (konfigurasi sama, model A) | 0,9675 (akurasi 0,969) |
+| Final (25 Okt)     | `4daca6c` | — (model sama dengan Preview 2) | |
 
-Validasi lokal terbukti **optimis**: 0,9722 di lokal vs 0,9595 di validation set tersembunyi (selisih 0,013). Penyebabnya, checkpoint Preview 1 dipilih dari nilai *maksimum* kurva yang berisik, dan `my_val` kecil (410 gambar). Karena itu, mulai Preview 2 pemilihan memakai rata-rata 3 epoch terakhir.
+Kolom *Commit* menunjuk commit yang memuat isi `submission/` yang dievaluasi. Asisten mengevaluasi commit terakhir sebelum tenggat. Commit sesudah `4daca6c` hanya mengubah README.
 
 Catatan eksperimen:
 
 | ID | Konfigurasi | Macro-F1 lokal | Catatan |
 |----|-------------|----------------|---------|
 | E0 | Baseline ResNet-18 (starter kit, 8 epoch) | — | referensi: ~0,92 di validation set tersembunyi (halaman kompetisi) |
-| E1 | ConvNeXt-Tiny 224, 15 epoch, aug strong, 2.753 gambar | 0,9722 (epoch 12) | Model Preview 1. Kesalahan dominan: keluarga gelas (plastik/kertas/styrofoam), bentuk sama tetapi material berbeda → hipotesis: resolusi lebih tinggi membantu membedakan tekstur |
-| E2 | cnxt224: konfigurasi E1, data & split sama | 0,9722 (epoch 12); rata-3-akhir 0,9711 | **Identik angka per angka dengan E1**: pipeline reproduksibel (seed 42). F1 gelas 0,974, kertas 0,962, styrofoam 0,975. **Terpilih** |
-| E3 | cnxt288: resolusi 288 px, data & split sama | 0,9735 (epoch 11); rata-3-akhir 0,9704 | Hipotesis **tidak terbukti**: selisih dengan E2 hanya ±1 gambar per kelas (gelas 0,967, kertas 0,952, styrofoam 0,980). Kesalahan tersisa didominasi gambar ambigu atau label keliru (poster daur ulang, gelas berlabel "polystyrene cups", screenshot), bukan kurangnya detail piksel |
-| E4 | TTA flip pada cnxt224 | 0,9722 → 0,9722 | Tidak mengubah satu pun prediksi di `my_val`: model sudah hampir invarian flip karena dilatih dengan flip. Dipakai karena tidak merugikan |
-| P2 | cnxt224 dilatih ulang pada seluruh data yang tersedia (2.753 gambar), 15 epoch, TTA flip | — (tanpa validasi; konfigurasi sama dengan E2) | Dikirim untuk Preview 2. Dibanding model Preview 1: +410 gambar latih, jadwal penuh, TTA |
+| E1 | ConvNeXt-Tiny 224, 15 epoch, aug strong; dilatih pada my_train (2.343 dari 2.753 gambar) | 0,9722 (epoch 12) | Model Preview 1. Kesalahan dominan: keluarga gelas (plastik/kertas/styrofoam), bentuk sama tetapi material berbeda → hipotesis: resolusi lebih tinggi membantu membedakan tekstur |
+| E2 | cnxt224: konfigurasi E1, data & split sama | 0,9722 (epoch 12); rata-3-akhir 0,9711 | **Identik angka per angka dengan E1**: pipeline reproduksibel (seed 42). Terpilih |
+| E3 | cnxt288: resolusi 288 px, data & split sama | 0,9735 (epoch 11); rata-3-akhir 0,9704 | Hipotesis **tidak terbukti**: selisih dengan E2 hanya ±1 gambar per kelas |
+| E4 | TTA flip pada cnxt224 | 0,9722 → 0,9722 | Tidak mengubah satu pun prediksi di `my_val`. Dipakai karena tidak merugikan |
+| P2 | cnxt224 dilatih ulang pada 2.753 gambar, 15 epoch, TTA flip | — (tanpa validasi) | Preview 2 → **model Final** |
+
+## Pelajaran
+
+1. **Validasi lokal optimis.** Skor lokal 0,9722 turun menjadi 0,9595 di validation set tersembunyi. Penyebabnya, checkpoint dipilih dari nilai maksimum kurva yang berisik dan `my_val` hanya 410 gambar. Karena itu seleksi diganti menjadi rata-rata 3 epoch terakhir, dan skor preview dijadikan dasar pemilihan model Final.
+2. **Resolusi bukan hambatan utama.** 288 px tidak lebih baik dari 224 px. Kesalahan yang tersisa didominasi gambar ambigu atau label keliru: poster daur ulang, gelas berlabel "polystyrene cups", screenshot media sosial.
+3. **TTA flip netral.** Model yang dilatih dengan augmentasi flip sudah hampir invarian terhadap flip.
+4. **Periksa kelengkapan data terhadap manifest.** 211 gambar hilang tidak terdeteksi di Preview 1. Sejak Preview 2, isi folder dicocokkan nama per nama dengan `train_sources.csv`.
+5. **Data latih lebih banyak.** Melatih pada seluruh data yang tersedia (+410 gambar) dengan jadwal penuh menaikkan skor tersembunyi dari 0,9595 menjadi 0,9675 (+0,008; akurasi 0,9609 → 0,969, sekitar 6 gambar lebih banyak yang benar).
 
 ## Cara Reproduksi
 
 Dataset tidak disertakan di repo (sesuai aturan kompetisi). Letakkan folder `train/` dari Google Drive asisten di luar repo.
 
-**Google Colab (yang dipakai kelompok):** buka `notebooks/studio2_preview2.ipynb`, pilih runtime T4 GPU, isi `DATA_SRC`, lalu *Run all*. Notebook menjalankan eksperimen, uji TTA, model final, dan membuat paket submission.
-
-**Lokal (setara dengan notebook):**
+**Lingkungan:** pelatihan dijalankan di Google Colab (GPU T4) dengan menjalankan `train.py` memakai dua perintah di bawah. Seluruh logika pelatihan ada di `train.py`; notebook Colab hanya memanggil perintah yang sama dan tidak disertakan di repo.
 
 ```bash
 pip install -r requirements.txt
@@ -72,5 +84,4 @@ submission/
 evaluate.py         # salinan skrip evaluasi resmi (tidak diubah)
 train.py            # training: seleksi Macro-F1, log, ekspor submission, --full, --tta-hflip
 train_baseline.py   # baseline dari starter kit
-notebooks/          # notebook Colab versi bersih (tanpa output)
 ```
